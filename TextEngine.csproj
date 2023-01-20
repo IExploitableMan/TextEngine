@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+	<Content Include="data\**">
+	  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	</Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="data\Новая папка\**" />
+    <Content Remove="data\Новая папка\**" />
+    <EmbeddedResource Remove="data\Новая папка\**" />
+    <None Remove="data\Новая папка\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="data\instance.json" />
+    <None Remove="data\script.lua" />
+    <None Remove="data\si_brief.wav" />
+    <None Remove="data\sound\m_2.wav" />
+    <None Remove="data\sound\si_escape.wav" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NLua" Version="1.6.0" />
+    <PackageReference Include="System.Windows.Extensions" Version="7.0.0" />
+  </ItemGroup>
+
+  <ProjectExtensions><VisualStudio><UserProperties /></VisualStudio></ProjectExtensions>
+
+</Project>
