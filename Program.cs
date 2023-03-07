@@ -20,59 +20,61 @@ public static class Program
 	public static void Main()
 	{
 		Load();
-		ShowIntro();
+		PrintIntro();
 
 		while (true)
 		{
-			NodeJson node = instance.nnodes[nodePointer];
-			List<int> wrongOptions = new();
-			OnlyWindows(() => sound = new());
+			//Prepare node
+			NodeJson node = instance.NodesList[nodePointer];
+			List<int> unavailableOptions = new();
+			sound = new();
 
-			if (node.id == null) throw new InvalidOperationException("Node id can't be null!");
-			if (!node.end && node.options == null) throw new InvalidOperationException("Node options can't be null!");
-			if (node.text == null) throw new InvalidOperationException("Node text can't be null!");
+			if (node.Id == null) throw new InvalidOperationException("[Node] Id is null!");
+			if (!node.End && node.Options == null) throw new InvalidOperationException("[Node] Options is null!");
+			if (node.Text == null) throw new InvalidOperationException("[Node] Text is null!");
 
-			if (node.sound != null)
+			if (node.Sound != null)
 			{
-				OnlyWindows(() => PlaySound(node.sound));
+				PlaySound(node.Sound);
 			}
-			if (node.ambient != null) 
+			if (node.Ambient != null) 
 			{
-				OnlyWindows(() => PlaySound(node.ambient, true));
+				PlaySound(node.Ambient, true);
 			}
 
-			CallLuaFunction(instance.prescript);
-			CallLuaFunction(node.prescript);
+			//Call lua
+			CallLuaFunction(instance.PreScript);
+			CallLuaFunction(node.PreScript);
 
-			Console.WriteLine(node.text);
+			Console.WriteLine(node.Text);
 
-			CallLuaFunction(instance.postscript);
-			CallLuaFunction(node.postscript);
+			CallLuaFunction(instance.PostScript);
+			CallLuaFunction(node.PostScript);
 
-			if (node.end) break;
+			if (node.End) break;
 
-			#region Option user input
 			PrintInventory();
-			for (int i = 0; i < node.options.Length; i++)
+
+			for (int i = 0; i < node.Options.Length; i++)
 			{
-				OptionJson option = node.options[i];
+				OptionJson option = node.Options[i];
 
-				if (option.text == null) throw new InvalidOperationException("Option name can't be null!");
-				if (option.transfer_id == null) throw new InvalidOperationException("Option transfer id can't be null!");
+				if (option.Text == null) throw new InvalidOperationException("[Option] Text is null!");
+				if (option.TransferId == null) throw new InvalidOperationException("[Option] Transfer id is null!");
 
-				if (option.mandatory_items != null)
+				if (option.MandatoryItems != null)
 				{
-					if (CanChooseOption(option.mandatory_items))
+					if (CanChooseOption(option.MandatoryItems))
 					{
 						Console.ForegroundColor = ConsoleColor.Green;
 					}
 					else
 					{
 						Console.ForegroundColor = ConsoleColor.Red;
-						wrongOptions.Add(i);
+						unavailableOptions.Add(i);
 					}
 				}
-				Console.WriteLine($"{i + 1}) {option.text}");
+				Console.WriteLine($"{i + 1}) {option.Text}");
 				Console.ForegroundColor = ConsoleColor.White;
 			}
 			PrintSeparator();
@@ -81,18 +83,14 @@ public static class Program
 			Console.ForegroundColor = ConsoleColor.Yellow;
 			Console.Write(":> ");
 			Console.ForegroundColor = ConsoleColor.White;
-			string userOption = Console.ReadLine();
+			string userInput = Console.ReadLine();
 			int intUserOption;
-			try
-			{
-				intUserOption = int.Parse(userOption) - 1;
-				_ = node.options[intUserOption];
-				if (wrongOptions.Contains(intUserOption))
-				{
-					throw new Exception();
-				}
-			}
-			catch (Exception)
+			if (
+				!int.TryParse(userInput, out intUserOption) ||
+				intUserOption < 1 ||
+				unavailableOptions.Contains(intUserOption) ||
+				--intUserOption >= node.Options.Length
+				) 
 			{
 				Console.ForegroundColor = ConsoleColor.Red;
 				Console.WriteLine("Неверный ввод!");
@@ -100,20 +98,16 @@ public static class Program
 				goto ask;
 			}
 
-			OptionJson o = node.options[intUserOption];
-			if (o.items_removed && o.mandatory_items != null)
+			OptionJson userСhoice = node.Options[intUserOption];
+			nodePointer = GetNodeIndexById(userСhoice.TransferId);
+
+			if (userСhoice.ItemsRemoved && userСhoice.MandatoryItems != null)
 			{
-				foreach (var item in o.mandatory_items)
-				{
-					inventory.Remove(item);
-				}
+				inventory.RemoveAll(t => userСhoice.MandatoryItems.Contains(t));
 			}
-			#endregion
 
 			Console.Clear();
-			OnlyWindows(sound.Stop);
-
-			nodePointer = GetNodeIndexById(node.options[intUserOption].transfer_id);
+			sound.Stop();
 		}
 
 		Console.ReadKey();
@@ -127,8 +121,8 @@ public static class Program
 #pragma warning disable CS8602
 		//Load instance.json
 		instance = JsonSerializer.Deserialize<InstanceJson>(File.ReadAllText(Constants.INSTANCE_PATH));
-		instance.nnodes = instance.nodes.ToList();
-		if (instance.title == null) throw new InvalidOperationException("Instance name can't be null!");
+		instance.NodesList = instance.Nodes.ToList();
+		if (instance.Title == null) throw new InvalidOperationException("[Instance] Title is null!");
 
 		//Load script.lua
 		lua = new();
@@ -136,28 +130,23 @@ public static class Program
 		lua.LoadCLRPackage();
 
 		lua.RegisterFunction("te_addItem", typeof(Program).GetMethod(nameof(LuaAddItem)));
+		lua.RegisterFunction("te_removeItem", typeof(Program).GetMethod(nameof(LuaRemoveItem)));
+
 		lua.RegisterFunction("te_setSound", typeof(Program).GetMethod(nameof(PlaySound)));
 
 		lua.RegisterFunction("te_addOption", typeof(Program).GetMethod(nameof(LuaAddOption)));
 		lua.RegisterFunction("te_removeOption", typeof(Program).GetMethod(nameof(LuaRemoveOption)));
 
-		lua.RegisterFunction("te_printSeparator", typeof(Program).GetMethod(nameof(PrintSeparator)));
 		lua.RegisterFunction("te_clear", typeof(Program).GetMethod(nameof(LuaClear)));
 		lua.RegisterFunction("te_print", typeof(Program).GetMethod(nameof(LuaPrint)));
+		lua.RegisterFunction("te_printSeparator", typeof(Program).GetMethod(nameof(PrintSeparator)));
+
 		lua.DoFile(Constants.SCRIPT_PATH);
 
 		//Init console
-		Console.Title = instance.title;
+		Console.Title = instance.Title;
 		Console.ForegroundColor = ConsoleColor.White;
 		Console.OutputEncoding = Encoding.UTF8;
-
-		//Init sound
-		if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-		{
-			Console.ForegroundColor = ConsoleColor.Red;
-			Console.WriteLine("Sound is not yet supported on Linux!");
-			Console.ForegroundColor = ConsoleColor.White;
-		}
 #pragma warning restore CS8601
 #pragma warning restore CS8602
 	}
@@ -165,14 +154,7 @@ public static class Program
 	#region Utilz
 	public static int GetNodeIndexById(string id) 
 	{
-		return instance.nnodes.FindIndex(x => x.id == id);
-	}
-	public static void OnlyWindows(Action action) 
-	{
-		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) 
-		{
-			action();
-		}
+		return instance.NodesList.FindIndex(x => x.Id == id);
 	}
 	public static void PlaySound(string wavFilename, bool loop = false) 
 	{
@@ -198,7 +180,7 @@ public static class Program
 	#endregion
 
 	#region Prints
-	public static void ShowIntro()
+	public static void PrintIntro()
 	{
 		string title = """
 		
@@ -252,6 +234,14 @@ public static class Program
 		Console.ForegroundColor = ConsoleColor.Magenta;
 		Console.WriteLine($"Вы получили {name}");
 	}
+	public static void LuaRemoveItem(string name, bool lost = false)
+	{
+		if (!inventory.Contains(name)) return;
+		inventory.Remove(name);
+		Console.ForegroundColor = ConsoleColor.Magenta;
+		string message = lost ? "потеряли" : "использовали";
+		Console.WriteLine($"Вы {message} {name}");
+	}
 	public static void LuaAddOption(string id, int index,
 		string f__text, 
 		string f__tranfer_id, 
@@ -259,22 +249,22 @@ public static class Program
 		bool f__items_removed = false
 	)
 	{
-		List<OptionJson> ol = instance.nnodes[GetNodeIndexById(id)].options.ToList();
+		List<OptionJson> ol = instance.NodesList[GetNodeIndexById(id)].Options.ToList();
 		ol.Insert(index, new OptionJson
 		{
-			text = f__text,
-			transfer_id = f__tranfer_id,
-			mandatory_items = f__mandatory_items,
-			items_removed = f__items_removed
+			Text = f__text,
+			TransferId = f__tranfer_id,
+			MandatoryItems = f__mandatory_items,
+			ItemsRemoved = f__items_removed
 		});
-		instance.nnodes[GetNodeIndexById(id)].options = ol.ToArray();
+		instance.NodesList[GetNodeIndexById(id)].Options = ol.ToArray();
 
 	}
 	public static void LuaRemoveOption(string id, int index) 
 	{
-		List<OptionJson> ol = instance.nnodes[GetNodeIndexById(id)].options.ToList();
+		List<OptionJson> ol = instance.NodesList[GetNodeIndexById(id)].Options.ToList();
 		ol.RemoveAt(index);
-		instance.nnodes[GetNodeIndexById(id)].options = ol.ToArray();
+		instance.NodesList[GetNodeIndexById(id)].Options = ol.ToArray();
 
 	}
 	#endregion

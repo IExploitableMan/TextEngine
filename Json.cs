@@ -6,31 +6,36 @@ namespace TextEngine;
 
 public class InstanceJson
 {
-	public string title { get; set; }
-	public NodeJson[] nodes { get; set; }
-	public string prescript { get; set; }
-	public string postscript { get; set; }
-	[JsonIgnore] public List<NodeJson> nnodes { get; set; }
+	[JsonPropertyName("title")] public string Title { get; set; }
+	[JsonPropertyName("nodes")] public NodeJson[] Nodes { get; set; }
+	[JsonPropertyName("prescript")] public string PreScript { get; set; }
+	[JsonPropertyName("postscript")] public string PostScript { get; set; }
+	[JsonIgnore] public List<NodeJson> NodesList { get; set; }
 }
 
 public class NodeJson
 {
-	public string id { get; set; }
-	public string text { get; set; }
-	public string prescript { get; set; }
-	public string postscript { get; set; }
-	public string sound { get; set; }
-	public string ambient { get; set; }
-	public bool end { get; set; }
-	public OptionJson[] options { get; set; }
+	[JsonPropertyName("id")] public string Id { get; set; }
+	[JsonPropertyName("text")] public string Text { get; set; }
+	[JsonPropertyName("prescript")] public string PreScript { get; set; }
+	[JsonPropertyName("postscript")] public string PostScript { get; set; }
+	[JsonPropertyName("sound")] public string Sound { get; set; }
+	[JsonPropertyName("ambient")] public string Ambient { get; set; }
+	[JsonPropertyName("end")] public bool End { get; set; }
+	[JsonPropertyName("options")] public OptionJson[] Options { get; set; }
 }
 
 public class OptionJson
 {
-	public string text { get; set; }
-	public string transfer_id { get; set; }
-	public string[] mandatory_items { get; set; }
-	public bool items_removed { get; set; }
+	[JsonPropertyName("text")] public string Text { get; set; }
+	[JsonPropertyName("transfer_id")] public string TransferId { get; set; }
+	[JsonPropertyName("mandatory_items")] public string[] MandatoryItems { get; set; }
+	[JsonPropertyName("items_removed")] public bool ItemsRemoved { get; set; }
+}
+
+public class I18nJson 
+{
+
 }
 #pragma warning restore CS8618
 #pragma warning restore IDE1006
